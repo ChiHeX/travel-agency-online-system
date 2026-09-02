@@ -1,0 +1,61 @@
+spring:
+  application:
+    name: travel-agency-api
+  datasource:
+    url: ${DB_URL:jdbc:mysql://localhost:3306/travel_agency?useUnicode=true&characterEncoding=utf8&serverTimezone=Asia/Shanghai&useSSL=false&allowPublicKeyRetrieval=true}
+    username: ${DB_USERNAME:travel}
+    password: ${DB_PASSWORD:travel_password}
+    driver-class-name: com.mysql.cj.jdbc.Driver
+    hikari:
+      maximum-pool-size: 12
+      minimum-idle: 2
+      connection-timeout: 30000
+  sql:
+    init:
+      mode: never
+  mvc:
+    problemdetails:
+      enabled: true
+
+server:
+  port: ${SERVER_PORT:8080}
+  shutdown: graceful
+
+mybatis-plus:
+  mapper-locations: classpath*:/mapper/**/*.xml
+  configuration:
+    map-underscore-to-camel-case: true
+    cache-enabled: false
+  global-config:
+    db-config:
+      id-type: auto
+
+app:
+  cors:
+    allowed-origins: ${CORS_ALLOWED_ORIGINS:http://localhost:5173}
+  jwt:
+    secret: ${JWT_SECRET:travel-agency-dev-secret-change-me-please-256bits}
+    expire-hours: ${JWT_EXPIRE_HOURS:24}
+  integrations:
+    amap:
+      enabled: ${AMAP_ENABLED:false}
+      web-key: ${AMAP_WEB_KEY:}
+    alipay:
+      sandbox: ${ALIPAY_SANDBOX:true}
+      enabled: ${ALIPAY_ENABLED:false}
+      callback-secret: ${ALIPAY_CALLBACK_SECRET:travel-agency-sandbox-callback-secret}
+
+management:
+  endpoints:
+    web:
+      exposure:
+        include: health,info,metrics
+  endpoint:
+    health:
+      probes:
+        enabled: true
+
+logging:
+  level:
+    root: INFO
+    com.travelagency: INFO

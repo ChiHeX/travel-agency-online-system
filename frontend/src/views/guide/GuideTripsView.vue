@@ -1,0 +1,15 @@
+<script setup>
+import { onMounted, ref } from 'vue'
+import { useRoute } from 'vue-router'
+import { ElMessage } from 'element-plus'
+import { guideApi } from '@/api/modules'
+const props = defineProps({ detail: { type: Boolean, default: false } }); const currentRoute = useRoute(); const rows = ref([]); const data = ref(null); const loading = ref(false)
+async function load() { loading.value = true; try { if (props.detail) data.value = await guideApi.detail(currentRoute.params.id); else rows.value = await guideApi.departures() || [] } finally { loading.value = false } }
+async function markFinished() { await guideApi.status(data.value.departure.id, 'FINISHED'); ElMessage.success('团期已标记完成'); load() }
+onMounted(load)
+</script>
+
+<template><div><template v-if="props.detail"><div class="admin-page-head"><div><h2>团期详情</h2><p>查看行程和最小必要游客信息。</p></div><button v-if="data?.departure?.status==='TRAVELLING'" class="primary-button" @click="markFinished">标记已完成</button></div><div v-if="loading" class="admin-panel"><el-skeleton :rows="8" animated /></div><template v-else-if="data"><div class="admin-panel trip-detail-head"><span class="eyebrow">TRIP #{{ data.departure.id }}</span><h3>线路 #{{ data.departure.routeId }}</h3><p>{{ data.departure.startDate }} 至 {{ data.departure.endDate }} · 状态 {{ data.departure.status }}</p></div><div class="admin-panel"><div class="panel-head"><div><span class="eyebrow">PASSENGER LIST</span><h3>游客名单</h3></div><span class="muted-text">证件号码已脱敏</span></div><table v-if="data.passengers?.length" class="data-table"><thead><tr><th>姓名</th><th>手机号</th><th>紧急联系人</th><th>证件</th></tr></thead><tbody><tr v-for="item in data.passengers" :key="`${item.orderNo}-${item.name}`"><td>{{ item.name }}</td><td>{{ item.phone || '—' }}</td><td>{{ item.emergencyName }} {{ item.emergencyPhone || '' }}</td><td>{{ item.idNo }}</td></tr></tbody></table><div v-else class="empty-box">暂无相关数据。</div></div></template></template><template v-else><div class="admin-page-head"><div><h2>我的团期</h2><p>按日期查看本人负责的团期。</p></div></div><div v-if="loading" class="admin-panel"><el-skeleton :rows="8" animated /></div><div v-else-if="rows.length" class="trip-cards"><RouterLink v-for="trip in rows" :key="trip.id" class="admin-panel trip-card" :to="{ name: 'guide-trip-detail', params: { id: trip.id } }"><span class="eyebrow">{{ trip.status }}</span><h3>线路 #{{ trip.routeId }}</h3><p>{{ trip.startDate }} 至 {{ trip.endDate }}</p><span class="plain-link">查看游客名单 →</span></RouterLink></div><div v-else class="empty-box">暂无相关数据。</div></template></div></template>
+
+<style scoped>.trip-detail-head h3{font-size:22px;margin:10px 0 5px}.trip-detail-head p{color:var(--muted);font-size:12px}.trip-cards{display:grid;grid-template-columns:repeat(3,1fr);gap:15px}.trip-card{transition:transform .2s}.trip-card:hover{transform:translateY(-3px)}.trip-card h3{margin:13px 0 6px}.trip-card p{color:var(--muted);font-size:12px}@media(max-width:750px){.trip-cards{grid-template-columns:1fr 1fr}}@media(max-width:520px){.trip-cards{grid-template-columns:1fr}}
+</style>

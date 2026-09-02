@@ -1,0 +1,17 @@
+<script setup>
+import { onMounted, ref, watch } from 'vue'
+import { ElMessage } from 'element-plus'
+import { adminApi } from '@/api/modules'
+
+const props = defineProps({ title: { type: String, required: true }, resource: { type: String, required: true } })
+const rows = ref([]); const loading = ref(false)
+const loaders = { attractions: adminApi.attractions, hotels: adminApi.hotels, guides: adminApi.guides, departures: adminApi.departures, refunds: adminApi.refunds }
+async function load() { loading.value = true; try { rows.value = await loaders[props.resource]() || [] } finally { loading.value = false } }
+async function updateDeparture(row) { const next = row.status === 'OPEN' ? 'CLOSED' : 'OPEN'; await adminApi.updateDepartureStatus(row.id, next); row.status = next; ElMessage.success('团期状态已更新') }
+async function decision(row, action) { await adminApi.refundDecision(row.id, { action, comment: action === 'APPROVE' ? '审核通过，按测试环境流程处理' : '资料需要补充后再申请' }); ElMessage.success('退款审核已处理'); load() }
+watch(() => props.resource, load); onMounted(load)
+</script>
+
+<template><div><div class="admin-page-head"><div><h2>{{ title }}</h2><p>维护业务资源与可追溯的基础资料来源。</p></div><button v-if="resource!=='refunds'" class="primary-button" @click="ElMessage.info('新增表单可在此接入，后端 CRUD 接口已经就绪')">+ 新增</button></div><div class="admin-panel"><div v-if="loading"><el-skeleton :rows="8" animated /></div><table v-else-if="rows.length" class="data-table"><thead><tr v-if="resource==='departures'"><th>线路</th><th>出发日期</th><th>返程日期</th><th>成人价</th><th>人数</th><th>状态</th><th>操作</th></tr><tr v-else-if="resource==='refunds'"><th>退款单</th><th>订单</th><th>金额</th><th>原因</th><th>状态</th><th>操作</th></tr><tr v-else-if="resource==='guides'"><th>姓名</th><th>联系电话</th><th>简介</th><th>状态</th></tr><tr v-else><th>名称</th><th>城市 / 地址</th><th>坐标</th><th>来源说明</th><th>状态</th></tr></thead><tbody><template v-for="row in rows" :key="row.id"><tr v-if="resource==='departures'"><td>#{{ row.routeId }}</td><td>{{ row.startDate }}</td><td>{{ row.endDate }}</td><td class="amount">¥{{ row.adultPrice }}</td><td>{{ row.confirmedPeople || 0 }} / {{ row.maxPeople }}</td><td><span class="tag" :class="row.status==='OPEN'?'success':row.status==='CLOSED'?'danger':'warning'">{{ row.status }}</span></td><td><button class="text-button" @click="updateDeparture(row)">{{ row.status==='OPEN'?'关闭':'开放' }}</button></td></tr><tr v-else-if="resource==='refunds'"><td>#{{ row.id }}</td><td>#{{ row.orderId }}</td><td class="amount">¥{{ row.amount }}</td><td>{{ row.reason }}</td><td><span class="tag" :class="row.status==='REFUNDED'?'success':row.status==='REJECTED'?'danger':'warning'">{{ row.status }}</span></td><td v-if="row.status==='APPLYING'"><button class="text-button" @click="decision(row,'APPROVE')">同意</button><button class="text-button" @click="decision(row,'REJECT')">拒绝</button></td><td v-else class="muted-text">已处理</td></tr><tr v-else-if="resource==='guides'"><td>{{ row.name }}</td><td>{{ row.phone || '—' }}</td><td>{{ row.intro || '—' }}</td><td>{{ row.status }}</td></tr><tr v-else><td><strong>{{ row.name }}</strong></td><td>{{ row.city || row.address || '—' }}</td><td>{{ row.longitude || '—' }}, {{ row.latitude || '—' }}</td><td>{{ row.dataSource || '待补充' }}</td><td>{{ row.status }}</td></tr></template></tbody></table><div v-else class="empty-box">暂无相关数据。</div></div></div></template>
+
+<style scoped>.amount{color:var(--coral);font-weight:700}</style>
